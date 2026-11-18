@@ -5,27 +5,26 @@ using LaCanchaDel10.Api.Modelos;
 using LaCanchaDel10.Api.Persistencia;
 using Microsoft.EntityFrameworkCore;
 
-namespace LaCanchaDel10.Api.Servicios;
+namespace LaCanchaDel10.Api.Servicios.Comandos;
 
-public interface IReservaService
+public interface IReservaComandos
 {
     Task<ReservaResponse> CrearAsync(ReservaRequest request, int idUsuarioActual);
-    Task<IEnumerable<ReservaResponse>> ObtenerMisReservasAsync(int idUsuarioActual);
-    Task<ReservaResponse> ObtenerPorIdAsync(int id, int idUsuarioActual);
     Task<ReservaResponse> ActualizarEstadoAsync(int id, ActualizarReservaRequest request, int idUsuarioActual);
     Task CancelarAsync(int id, int idUsuarioActual);
 }
 
-public class ReservaService : IReservaService
+public class ReservaComandos : IReservaComandos
 {
     private readonly AppDbContext _db;
 
-    public ReservaService(AppDbContext db)
+    public ReservaComandos(AppDbContext db)
     {
         _db = db;
     }
 
-    
+    // Transacción serializable + índice único filtrado en la base de datos:
+    // doble candado para que dos usuarios nunca reserven el mismo cupo.
     public async Task<ReservaResponse> CrearAsync(ReservaRequest request, int idUsuarioActual)
     {
         await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -64,31 +63,6 @@ public class ReservaService : IReservaService
         return ToResponse(reserva);
     }
 
-    public async Task<IEnumerable<ReservaResponse>> ObtenerMisReservasAsync(int idUsuarioActual)
-    {
-        return await _db.Reservas
-            .Where(r => r.IdUsuario == idUsuarioActual)
-            .OrderByDescending(r => r.FechaReserva)
-            .Select(r => ToResponse(r))
-            .ToListAsync();
-    }
-
-    public async Task<ReservaResponse> ObtenerPorIdAsync(int id, int idUsuarioActual)
-    {
-        var reserva = await _db.Reservas
-            .Include(r => r.Cancha!).ThenInclude(c => c.Establecimiento)
-            .FirstOrDefaultAsync(r => r.IdReserva == id)
-            ?? throw new NotFoundException("Reserva no encontrada.");
-
-        var esDueno = reserva.IdUsuario == idUsuarioActual;
-        var esPropietarioDeLaCancha = reserva.Cancha?.Establecimiento?.IdPropietario == idUsuarioActual;
-
-        if (!esDueno && !esPropietarioDeLaCancha)
-            throw new ForbiddenException("No puedes consultar esta reserva.");
-
-        return ToResponse(reserva);
-    }
-
     public async Task<ReservaResponse> ActualizarEstadoAsync(int id, ActualizarReservaRequest request, int idUsuarioActual)
     {
         var reserva = await _db.Reservas
@@ -105,9 +79,7 @@ public class ReservaService : IReservaService
         reserva.Estado = request.Estado;
 
         if (request.Estado == EstadoReserva.Cancelada && reserva.Horario is not null)
-        {
             reserva.Horario.Disponible = true;
-        }
 
         await _db.SaveChangesAsync();
 

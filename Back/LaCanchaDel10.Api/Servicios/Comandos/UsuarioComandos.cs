@@ -4,20 +4,19 @@ using LaCanchaDel10.Api.Modelos;
 using LaCanchaDel10.Api.Persistencia;
 using Microsoft.EntityFrameworkCore;
 
-namespace LaCanchaDel10.Api.Servicios;
+namespace LaCanchaDel10.Api.Servicios.Comandos;
 
-public interface IUsuarioService
+public interface IUsuarioComandos
 {
     Task<UsuarioResponse> RegistrarAsync(RegistrarUsuarioRequest request);
-    Task<UsuarioResponse> ObtenerPorIdAsync(int id);
     Task<UsuarioResponse> ActualizarAsync(int id, ActualizarUsuarioRequest request, int idUsuarioActual);
 }
 
-public class UsuarioService : IUsuarioService
+public class UsuarioComandos : IUsuarioComandos
 {
     private readonly AppDbContext _db;
 
-    public UsuarioService(AppDbContext db)
+    public UsuarioComandos(AppDbContext db)
     {
         _db = db;
     }
@@ -26,9 +25,7 @@ public class UsuarioService : IUsuarioService
     {
         var correoExiste = await _db.Usuarios.AnyAsync(u => u.Correo == request.Correo);
         if (correoExiste)
-        {
             throw new ConflictException("Ya existe una cuenta registrada con ese correo.");
-        }
 
         var usuario = new Usuario
         {
@@ -45,20 +42,10 @@ public class UsuarioService : IUsuarioService
         return ToResponse(usuario);
     }
 
-    public async Task<UsuarioResponse> ObtenerPorIdAsync(int id)
-    {
-        var usuario = await _db.Usuarios.FindAsync(id)
-            ?? throw new NotFoundException("Usuario no encontrado.");
-
-        return ToResponse(usuario);
-    }
-
     public async Task<UsuarioResponse> ActualizarAsync(int id, ActualizarUsuarioRequest request, int idUsuarioActual)
     {
         if (id != idUsuarioActual)
-        {
             throw new ForbiddenException("No puedes modificar el perfil de otro usuario.");
-        }
 
         var usuario = await _db.Usuarios.FindAsync(id)
             ?? throw new NotFoundException("Usuario no encontrado.");

@@ -11,10 +11,10 @@ public interface IAuthService
 
 public class AuthService : IAuthService
 {
-    private readonly AppDbContext _db;
+    private readonly LecturaDbContext _db;
     private readonly ITokenService _tokenService;
 
-    public AuthService(AppDbContext db, ITokenService tokenService)
+    public AuthService(LecturaDbContext db, ITokenService tokenService)
     {
         _db = db;
         _tokenService = tokenService;

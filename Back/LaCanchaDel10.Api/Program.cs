@@ -3,6 +3,8 @@ using System.Text.Json.Serialization;
 using LaCanchaDel10.Api.Comun;
 using LaCanchaDel10.Api.Persistencia;
 using LaCanchaDel10.Api.Servicios;
+using LaCanchaDel10.Api.Servicios.Comandos;
+using LaCanchaDel10.Api.Servicios.Consultas;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -10,20 +12,40 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ---------- Base de datos: escritura y lectura separadas ----------
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Falta la cadena de conexión 'DefaultConnection'.");
 
+// Si no hay cadena de lectura propia, se usa la misma base de datos.
+var lecturaConnectionString = builder.Configuration.GetConnectionString("LecturaConnection")
+    ?? connectionString;
+
+// Escritura: comandos (crear, actualizar, eliminar)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString));
 
+// Lectura: consultas (solo SELECT, sin seguimiento de cambios)
+builder.Services.AddDbContext<LecturaDbContext>(options =>
+    options.UseSqlServer(lecturaConnectionString));
+
+// ---------- Servicios de la aplicación ----------
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IUsuarioService, UsuarioService>();
-builder.Services.AddScoped<IEstablecimientoService, EstablecimientoService>();
-builder.Services.AddScoped<ICanchaService, CanchaService>();
-builder.Services.AddScoped<IHorarioService, HorarioService>();
-builder.Services.AddScoped<IReservaService, ReservaService>();
 
+// Consultas (lectura)
+builder.Services.AddScoped<IUsuarioConsultas, UsuarioConsultas>();
+builder.Services.AddScoped<IEstablecimientoConsultas, EstablecimientoConsultas>();
+builder.Services.AddScoped<ICanchaConsultas, CanchaConsultas>();
+builder.Services.AddScoped<IReservaConsultas, ReservaConsultas>();
+
+// Comandos (escritura)
+builder.Services.AddScoped<IUsuarioComandos, UsuarioComandos>();
+builder.Services.AddScoped<IEstablecimientoComandos, EstablecimientoComandos>();
+builder.Services.AddScoped<ICanchaComandos, CanchaComandos>();
+builder.Services.AddScoped<IHorarioComandos, HorarioComandos>();
+builder.Services.AddScoped<IReservaComandos, ReservaComandos>();
+
+// ---------- Autenticación JWT ----------
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Falta 'Jwt:Key' en la configuración.");
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "LaCanchaDel10.Api";
@@ -50,12 +72,14 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// ---------- CORS (necesario para que la app móvil consuma la API) ----------
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("PermitirApp", policy =>
         policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 
+// ---------- Controladores (enums como texto) y Swagger ----------
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -93,6 +117,7 @@ var app = builder.Build();
 
 app.UseMiddleware<ExceptionMiddleware>();
 
+// Swagger disponible siempre (no solo en Development) para poder calificarlo publicado.
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
@@ -100,7 +125,12 @@ app.UseSwaggerUI(options =>
     options.RoutePrefix = "swagger";
 });
 
-app.UseHttpsRedirection();
+// En desarrollo se acepta HTTP plano para que el celular (Expo Go) pueda llamar a la API.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseCors("PermitirApp");
 app.UseAuthentication();
 app.UseAuthorization();

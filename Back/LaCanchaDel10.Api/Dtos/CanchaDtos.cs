@@ -11,3 +11,8 @@ public record CanchaRequest(
     EstadoCancha Estado = EstadoCancha.Activa);
 
 public record CanchaResponse(int IdCancha, string Nombre, string Tipo, decimal Precio, EstadoCancha Estado, int IdEstablecimiento);
+
+// Respuesta de las consultas: trae los datos del establecimiento para pintar la lista sin más llamadas.
+public record CanchaDetalleResponse(
+    int IdCancha, string Nombre, string Tipo, decimal Precio, EstadoCancha Estado,
+    int IdEstablecimiento, string EstablecimientoNombre, string EstablecimientoDireccion);

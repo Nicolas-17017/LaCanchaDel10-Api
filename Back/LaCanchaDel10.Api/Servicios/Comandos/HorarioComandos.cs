@@ -4,20 +4,20 @@ using LaCanchaDel10.Api.Modelos;
 using LaCanchaDel10.Api.Persistencia;
 using Microsoft.EntityFrameworkCore;
 
-namespace LaCanchaDel10.Api.Servicios;
+namespace LaCanchaDel10.Api.Servicios.Comandos;
 
-public interface IHorarioService
+public interface IHorarioComandos
 {
     Task<HorarioResponse> CrearAsync(HorarioRequest request, int idUsuarioActual);
     Task<HorarioResponse> ActualizarAsync(int id, HorarioRequest request, int idUsuarioActual);
     Task EliminarAsync(int id, int idUsuarioActual);
 }
 
-public class HorarioService : IHorarioService
+public class HorarioComandos : IHorarioComandos
 {
     private readonly AppDbContext _db;
 
-    public HorarioService(AppDbContext db)
+    public HorarioComandos(AppDbContext db)
     {
         _db = db;
     }
