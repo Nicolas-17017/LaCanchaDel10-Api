@@ -1,140 +1,113 @@
-# LACANCHADEL10 — API
+# LACANCHADEL10
 
-API REST para la reserva de canchas deportivas. Proyecto final de Programación de Dispositivos Móviles — I.U. Pascual Bravo.
+Aplicación móvil y API REST para la reserva de canchas deportivas. Proyecto final de Programación de Dispositivos Móviles, I.U. Pascual Bravo.
 
 **Autor:** Nicolas Zapata Tavera
 
-## Tecnologías
-
-- ASP.NET Core Web API (.NET 10), C#
-- Entity Framework Core + SQL Server
-- Autenticación JWT con roles `Cliente` y `Propietario`
-- Contraseñas almacenadas con hash BCrypt
-- Documentación con Swagger / OpenAPI
+Los clientes consultan canchas, eligen día y horario y reservan. Los propietarios gestionan establecimientos, canchas, horarios y reservas.
 
 ## Estructura del repositorio
 
 ```
 /
-├── database/
-│   └── schema.sql              ← script DDL (crea la base de datos y las 5 tablas)
-├── docs/
-│   └── swagger.json            ← documentación OpenAPI exportada
-├── LaCanchaDel10.Api/
-│   ├── Controladores/          ← endpoints HTTP
-│   ├── Servicios/              ← lógica de negocio
-│   ├── Modelos/                ← entidades (Usuario, Establecimiento, Cancha, Horario, Reserva)
-│   ├── Dtos/                   ← objetos de entrada y salida de la API
-│   ├── Persistencia/           ← AppDbContext (conexión a SQL Server)
-│   ├── Comun/                  ← excepciones y manejo de errores
-│   ├── Program.cs
-│   └── appsettings.json
+├── Front/     App móvil (Expo + React Native + TypeScript)
+├── Back/      API REST (ASP.NET Core, .NET 10)
+├── BD/        Script DDL de la base de datos (schema.sql)
 └── README.md
 ```
 
-## Modelo de datos
+## Tecnologías
 
-| Tabla | Relación |
-|---|---|
-| `Usuario` | clientes y propietarios |
-| `Establecimiento` | pertenece a un `Usuario` (propietario) |
-| `Cancha` | pertenece a un `Establecimiento` |
-| `Horario` | pertenece a una `Cancha` |
-| `Reserva` | une un `Usuario` con un `Horario` de una `Cancha` |
-
-El esquema **no** lo crea Entity Framework: el script `database/schema.sql` es la fuente de verdad. EF Core solo lee y escribe datos.
+- **Front:** Expo, React Native, TypeScript, React Navigation.
+- **Back:** ASP.NET Core Web API (.NET 10), C#, Entity Framework Core, SQL Server.
+- **Autenticación:** JWT con roles `Cliente` y `Propietario`; contraseñas con hash BCrypt.
+- **Documentación de la API:** Swagger / OpenAPI en `/swagger`.
+- **Arquitectura:** la API separa lectura y escritura en servicios distintos (`Servicios/Consultas` y `Servicios/Comandos`), con controladores, DTOs y modelos por separado.
 
 ## Requisitos
 
 - .NET SDK 10
-- SQL Server (Express o superior) y SQL Server Management Studio (SSMS)
+- SQL Server (o SQL Server Express)
+- Node.js 18 o superior
+- App **Expo Go** en el celular
+- PC y celular conectados a la **misma red Wi-Fi**
 
-## Instrucciones de ejecución
+## 1. Base de datos
 
-### 1. Crear la base de datos
+1. Crea una base de datos vacía en SQL Server, por ejemplo `LaCanchaDel10`.
+2. Ejecuta el script `BD/schema.sql` sobre esa base.
 
-1. Abre SSMS y conéctate a tu servidor.
-2. Abre una **Nueva consulta**, pega el contenido de `database/schema.sql` y ejecútalo (F5).
-3. Verifica que aparezca la base `LaCanchaDel10` con sus 5 tablas.
+## 2. Backend (Back)
 
-### 2. Configurar la conexión
+1. Configura la conexión y el JWT en `Back/LaCanchaDel10.Api/appsettings.json`, o con variables de entorno:
 
-Edita `LaCanchaDel10.Api/appsettings.json` y ajusta `ConnectionStrings:DefaultConnection` con el nombre de tu servidor.
+   ```
+   ConnectionStrings__DefaultConnection = Server=TU_SERVIDOR;Database=LaCanchaDel10;Trusted_Connection=True;TrustServerCertificate=True
+   Jwt__Key = [clave secreta de mínimo 32 caracteres]
+   ```
 
-Con autenticación de Windows:
+   > Ajusta los nombres de las claves a los que use tu `appsettings.json`.
 
-```json
-"DefaultConnection": "Server=NOMBRE_PC\\SQLEXPRESS;Database=LaCanchaDel10;Trusted_Connection=True;TrustServerCertificate=True;"
-```
+2. Desde `Back/LaCanchaDel10.Api`:
 
-Con usuario y contraseña de SQL Server:
+   ```bash
+   dotnet restore
+   dotnet run
+   ```
 
-```json
-"DefaultConnection": "Server=localhost,1433;Database=LaCanchaDel10;User Id=sa;Password=TU_CLAVE;TrustServerCertificate=True;"
-```
+3. Documentación Swagger: `http://localhost:[PUERTO]/swagger`
 
-También se puede definir con **variables de entorno** (tienen prioridad sobre `appsettings.json`). En PowerShell:
+## 3. Frontend (Front)
 
-```powershell
-$env:ConnectionStrings__DefaultConnection = "Server=NOMBRE_PC\SQLEXPRESS;Database=LaCanchaDel10;Trusted_Connection=True;TrustServerCertificate=True;"
-$env:Jwt__Key = "una-llave-secreta-de-al-menos-32-caracteres"
-```
+1. Desde `Front`:
 
-La clave `Jwt:Key` debe tener al menos 32 caracteres.
+   ```bash
+   npm install
+   ```
 
-### 3. Ejecutar la API
+2. En `Front/src/config.ts` escribe la IP de tu PC en la red Wi-Fi (no `localhost`). La ves con `ipconfig` (Dirección IPv4):
 
-Desde Visual Studio con **F5**, o por consola:
+   ```ts
+   export const API_URL = 'http://TU_IP:[PUERTO]';
+   ```
 
-```
-cd LaCanchaDel10.Api
-dotnet run
-```
+3. Inicia la app:
 
-La consola indica el puerto en la línea `Now listening on: https://localhost:XXXX`.
+   ```bash
+   npx expo start -c
+   ```
 
-### 4. Documentación (Swagger)
+4. Escanea el QR con Expo Go.
 
-Con la API corriendo, abre en el navegador:
+> Si el celular no conecta, permite el puerto de la API en el Firewall de Windows y verifica que la API esté escuchando en la red (`http://0.0.0.0:[PUERTO]`).
 
-```
-https://localhost:XXXX/swagger
-```
+## Usuarios de prueba
 
-Para probar endpoints protegidos: ejecuta `POST /api/auth/login`, copia el `token` (sin comillas), pulsa **Authorize** y pégalo **sin** escribir `Bearer`.
+| Rol | Correo | Contraseña |
+|---|---|---|
+| Cliente | cliente@correo.com | 123456 |
+| Propietario | [correo] | [contraseña] |
 
-La documentación también está exportada en `docs/swagger.json`.
+## Funcionalidades de la app
 
-## Flujo de prueba sugerido
+- Registro, inicio de sesión y sesión persistente.
+- Listado de canchas con filtro por tipo.
+- Detalle de cancha, selección de día y horario, y reserva.
+- Mis reservas, con opción de cancelar.
+- Vista del propietario: establecimientos, canchas, horarios y gestión de reservas (confirmar, completar, cancelar).
 
-1. `POST /api/usuarios` — registrar un usuario `Propietario` y otro `Cliente`.
-2. `POST /api/auth/login` como propietario y autorizar el token.
-3. `POST /api/establecimientos`, luego `POST /api/canchas` y `POST /api/horarios`.
-4. Cambiar al token del cliente y ejecutar `POST /api/reservas` con el `idHorario`.
-5. `DELETE /api/reservas/{id}` cancela la reserva y libera el horario.
+## Endpoints principales
 
-## Endpoints
+| Método | Ruta | Descripción |
+|---|---|---|
+| POST | /api/auth/login | Inicio de sesión |
+| POST | /api/usuarios | Registro de usuario |
+| GET | /api/canchas | Listar canchas (filtros: idEstablecimiento, tipo, soloActivas) |
+| GET | /api/canchas/{id}/horarios | Horarios de una cancha por fecha |
+| POST | /api/reservas | Crear reserva |
+| GET | /api/reservas | Reservas del usuario autenticado |
+| DELETE | /api/reservas/{id} | Cancelar reserva |
+| POST | /api/canchas | Crear cancha (Propietario) |
+| POST | /api/horarios | Crear horario (Propietario) |
 
-| Método | Ruta | Descripción | Acceso |
-|---|---|---|---|
-| POST | `/api/usuarios` | Registrar usuario | Público |
-| POST | `/api/auth/login` | Iniciar sesión (devuelve JWT) | Público |
-| GET, PUT | `/api/usuarios/{id}` | Consultar / actualizar perfil propio | Autenticado |
-| GET | `/api/establecimientos`, `/api/establecimientos/{id}` | Consultar establecimientos | Público |
-| POST, PUT, DELETE | `/api/establecimientos[/{id}]` | Administrar establecimientos propios | Propietario |
-| GET | `/api/canchas`, `/api/canchas/{id}` | Consultar canchas (filtros `idEstablecimiento`, `tipo`) | Público |
-| POST, PUT, DELETE | `/api/canchas[/{id}]` | Administrar canchas propias (DELETE las desactiva) | Propietario |
-| GET | `/api/canchas/{id}/horarios` | Horarios de una cancha (filtro `fecha`) | Público |
-| GET | `/api/canchas/{id}/reservas` | Reservas de una cancha propia | Propietario |
-| POST, PUT, DELETE | `/api/horarios[/{id}]` | Publicar, editar o eliminar cupos | Propietario |
-| POST | `/api/reservas` | Reservar un horario | Autenticado |
-| GET | `/api/reservas` | Mis reservas | Autenticado |
-| GET, PUT, DELETE | `/api/reservas/{id}` | Consultar, cambiar estado, cancelar | Autenticado |
-
-## Decisiones de diseño
-
-- **Sin dobles reservas:** transacción serializable en el servicio más un índice único filtrado en la base de datos (una sola reserva activa por horario).
-- **Cancelar libera el cupo:** la reserva queda en estado `Cancelada` (no se borra) y el horario vuelve a estar disponible.
-- **Desactivar en vez de borrar:** `DELETE /api/canchas/{id}` marca la cancha como `Inactiva` para conservar el historial.
-- **Seguridad:** contraseñas con BCrypt, JWT con roles, y cada propietario solo administra lo suyo.
-- **Errores uniformes:** un middleware convierte las excepciones de negocio en códigos HTTP (400, 401, 403, 404, 409, 500).
+La lista completa y los modelos están en Swagger.
